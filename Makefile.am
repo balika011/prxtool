@@ -7,6 +7,8 @@ bin_PROGRAMS = prxtool
 TINYXML = $(srcdir)/tinyxml
 INLCUDES = -I $(srcdir) -I $(TINYXML)
 
+LIBS = -lcapstone -ljansson
+
 prxtool_SOURCES = \
 	main.C \
 	ProcessElf.C \

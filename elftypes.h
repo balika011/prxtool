@@ -121,7 +121,7 @@ typedef u32 Elf32_Word;
 #define ELF_MAGIC	0x464C457F
 
 #define ELF_MIPS_TYPE 0x0002
-#define ELF_PRX_TYPE  0xFFA0
+#define ELF_PRX_TYPE  0xFE04
 
 #define SHT_NULL 0 
 #define SHT_PROGBITS 1 
@@ -140,31 +140,6 @@ typedef u32 Elf32_Word;
 #define SHT_LOUSER 0x80000000 
 #define SHT_HIUSER 0xffffffff
 
-#define SHT_PRXRELOC (SHT_LOPROC | 0xA0)
-
-// MIPS Reloc Entry Types
-#define R_MIPS_NONE     0
-#define R_MIPS_16       1
-#define R_MIPS_32       2
-#define R_MIPS_26       4
-#define R_MIPS_HI16     5
-#define R_MIPS_LO16     6
-
-/* Unsupported for PRXes (loadcore.prx ignores them) */
-#define R_MIPS_REL32    3
-#define R_MIPS_GPREL16  7
-#define R_MIPS_LITERAL  8
-#define R_MIPS_GOT16    9
-#define R_MIPS_PC16     10
-#define R_MIPS_CALL16   11
-#define R_MIPS_GPREL32  12
-
-/* For the new relocation type */
-#define R_MIPS_X_HI16   13
-#define R_MIPS_X_J26    14
-#define R_MIPS_X_JAL26  15
-
-
 #define SHF_WRITE 		1
 #define SHF_ALLOC 		2
 #define SHF_EXECINSTR 	4
@@ -179,8 +154,61 @@ typedef u32 Elf32_Word;
 #define PT_LOPROC 		0x70000000
 #define PT_HIPROC 		0x7fffffff
 
-#define PT_PRXRELOC             0x700000A0
-#define PT_PRXRELOC2            0x700000A1
+#define PT_SCE_RELA 0x60000000
+
+/** \name SCE Relocation
+ *  @{
+ */
+typedef union sce_reloc
+{
+    u32       r_type;
+    struct
+    {
+        u32   r_opt1;
+        u32   r_opt2;
+    } r_short;
+    struct
+    {
+        u32   r_type;
+        u32   r_addend;
+        u32   r_offset;
+    } r_long;
+} sce_reloc_t;
+/** @}*/
+
+/** \name Macros to get SCE reloc values
+ *  @{
+ */
+#define SCE_RELOC_SHORT_OFFSET(x) (((x).r_opt1 >> 20) | ((x).r_opt2 & 0xFFFFF) << 12)
+#define SCE_RELOC_SHORT_ADDEND(x) ((x).r_opt2 >> 20)
+#define SCE_RELOC_LONG_OFFSET(x) ((x).r_offset)
+#define SCE_RELOC_LONG_ADDEND(x) ((x).r_addend)
+#define SCE_RELOC_LONG_CODE2(x) (((x).r_type >> 20) & 0xFF)
+#define SCE_RELOC_LONG_DIST2(x) (((x).r_type >> 28) & 0xF)
+#define SCE_RELOC_IS_SHORT(x) (((x).r_type) & 0xF)
+#define SCE_RELOC_CODE(x) (((x).r_type >> 8) & 0xFF)
+#define SCE_RELOC_SYMSEG(x) (((x).r_type >> 4) & 0xF)
+#define SCE_RELOC_DATSEG(x) (((x).r_type >> 16) & 0xF)
+/** @}*/
+
+/** \name Vita supported relocations
+ *  @{
+ */
+#define R_ARM_NONE              0
+#define R_ARM_ABS32             2
+#define R_ARM_REL32             3
+#define R_ARM_THM_CALL          10
+#define R_ARM_CALL              28
+#define R_ARM_JUMP24            29
+#define R_ARM_TARGET1           38
+#define R_ARM_V4BX              40
+#define R_ARM_TARGET2           41
+#define R_ARM_PREL31            42
+#define R_ARM_MOVW_ABS_NC       43
+#define R_ARM_MOVT_ABS          44
+#define R_ARM_THM_MOVW_ABS_NC   47
+#define R_ARM_THM_MOVT_ABS      48
+/** @}*/
 
 /* ELF file header */
 typedef struct { 

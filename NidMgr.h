@@ -92,6 +92,8 @@ public:
 	const char *FindLibName(const char *lib, u32 nid);
 	const char *FindDependancy(const char *lib);
 	bool AddXmlFile(const char *szFilename);
+	bool AddJsonFile(const char *szFilename);
+	int vita_imports_loads(FILE *text, int verbose);
 	LibraryEntry *GetLibraries(void);
 	bool AddFunctionFile(const char *szFilename);
 	FunctionType *FindFunctionType(const char *name);

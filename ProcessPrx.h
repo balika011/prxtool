@@ -35,7 +35,7 @@ class CProcessPrx : public CProcessElf
 	bool FillModule(u8 *pData, u32 iAddr);
 	bool CreateFakeSections();
 	void FreeMemory();
-	int  LoadSingleImport(PspModuleImport *pImport, u32 addr);
+	int  LoadSingleImport(PspModuleImport2xx *pImport, u32 addr);
 	bool LoadImports();
 	int  LoadSingleExport(PspModuleExport *pExport, u32 addr);
 	bool LoadExports();

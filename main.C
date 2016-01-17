@@ -56,6 +56,8 @@ static bool g_aliasOutput = false;
 static const char *g_pDbTitle;
 static unsigned int g_database = 0;
 
+static bool g_thumbMode = false;
+
 int do_serialize(const char *arg)
 {
 	int i;
@@ -132,8 +134,8 @@ static struct ArgEntry cmd_options[] = {
 		"        : Output an export file (.exp)"},
 	{"disasm", 'w', ARG_TYPE_INT, ARG_OPT_NONE, (void*) &g_outputMode, OUTPUT_DISASM, 
 		"        : Disasm the executable sections of the files (if more than one file output name is automatic)"},
-	{"disopts", 'i', ARG_TYPE_STR, ARG_OPT_REQUIRED, (void*) &g_disopts, 0, 
-		"opts    : Specify options for disassembler"},
+	{"thumbmode", 'i', ARG_TYPE_BOOL, ARG_OPT_NONE, (void*) &g_thumbMode, true, 
+		"        : Set to thumb mode"},
 	{"binary", 'b', ARG_TYPE_BOOL, ARG_OPT_NONE, (void*) &g_loadbin, true, 
 		"        : Load the file as binary for disassembly"},
 	{"database", 'l', ARG_TYPE_INT, ARG_OPT_REQUIRED, (void*) &g_database, 0, 
@@ -177,6 +179,8 @@ void init_arguments()
 	g_iSMask = SERIALIZE_ALL & ~SERIALIZE_SECTIONS;
 	g_newstubs = 0;
 	g_dwBase = 0;
+	
+	g_thumbMode = false;
 
 	memset(g_namepath, 0, sizeof(g_namepath));
 	memset(g_funcpath, 0, sizeof(g_funcpath));
@@ -352,6 +356,8 @@ void output_disasm(const char *file, FILE *out_fp, CNidMgr *nids)
 {
 	CProcessPrx prx(g_dwBase);
 	bool blRet;
+
+	SetThumbMode(g_thumbMode);
 
 	COutput::Printf(LEVEL_INFO, "Loading %s\n", file);
 	prx.SetNidMgr(nids);
@@ -925,7 +931,7 @@ int main(int argc, char **argv)
 
 		if(g_pNamefile != NULL)
 		{
-			(void) nids.AddXmlFile(g_pNamefile);
+			(void) nids.AddJsonFile(g_pNamefile);
 		}
 		if(g_pFuncfile != NULL)
 		{
@@ -940,7 +946,7 @@ int main(int argc, char **argv)
 		{
 			CNidMgr nidData;
 
-			if(nidData.AddXmlFile(g_ppInfiles[0]))
+			if(nidData.AddJsonFile(g_ppInfiles[0]))
 			{
 				output_stubs_xml(&nidData);
 			}

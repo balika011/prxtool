@@ -19,15 +19,11 @@ struct SyslibEntry
 };
 
 static SyslibEntry g_syslib[] = {
-	{ 0xd3744be0, "module_bootstart" },
-    { 0xf01d73a7, "module_info" },
-	{ 0x2f064fa6, "module_reboot_before" },
-	{ 0xadf12745, "module_reboot_phase" },
-	{ 0xd632acdb, "module_start" },
-	{ 0x0f7c276c, "module_start_thread_parameter" },
-	{ 0xcee8593c, "module_stop" },
-	{ 0xcf0cc697, "module_stop_thread_parameter" },
-	{ 0x11b97506, "module_sdk_version" },
+	{ 0x70FBA1E7, "module_process_param" },
+	{ 0x6C2224BA, "module_info" },
+	{ 0x935CD196, "module_start" },
+	{ 0x79F8E492, "module_stop" },
+	{ 0x913482A9, "module_exit" },
 };
 
 #define MASTER_NID_MAPPER "MasterNidMapper"
@@ -382,6 +378,204 @@ bool CNidMgr::AddXmlFile(const char *szFilename)
 	}
 
 	return blRet;
+}
+
+#include <jansson.h>
+
+int vita_imports_loads(FILE *text, int verbose);
+
+bool CNidMgr::AddJsonFile(const char *szFilename)
+{
+	FILE *fp = fopen(szFilename, "r");
+	if (fp == NULL) {
+		COutput::Printf(LEVEL_ERROR, "Error: could not open %s\n", szFilename);
+		return NULL;
+	}
+
+	vita_imports_loads(fp, 1);
+
+	fclose(fp);
+}
+
+int CNidMgr::vita_imports_loads(FILE *text, int verbose)
+{
+	bool blMasterNids = false;
+
+	json_t *libs, *lib_data;
+	json_error_t error;
+	const char *lib_name, *mod_name, *target_name;
+
+	libs = json_loadf(text, 0, &error);
+	if (libs == NULL) {
+		COutput::Printf(LEVEL_ERROR, "error: on line %d: %s\n", error.line, error.text);
+		return NULL;
+	}
+
+	if (!json_is_object(libs)) {
+		COutput::Printf(LEVEL_ERROR, "error: modules is not an object\n");
+		json_decref(libs);
+		return NULL;
+	}
+
+	int i, j, k;
+
+	i = -1;
+	json_object_foreach(libs, lib_name, lib_data) {
+		json_t *nid, *modules, *mod_data;
+
+		i++;
+
+		if (!json_is_object(lib_data)) {
+			COutput::Printf(LEVEL_ERROR, "error: library %s is not an object\n", lib_name);
+			json_decref(libs);
+			return NULL;
+		}
+
+		nid = json_object_get(lib_data, "nid");
+		if (!json_is_integer(nid)) {
+			COutput::Printf(LEVEL_ERROR, "error: library %s: nid is not an integer\n", lib_name);
+			json_decref(libs);
+			return NULL;
+		}
+
+		modules = json_object_get(lib_data, "modules");
+		if (!json_is_object(modules)) {
+			COutput::Printf(LEVEL_ERROR, "error: library %s: module is not an object\n", lib_name);
+			json_decref(libs);
+			return NULL;
+		}
+
+		j = -1;
+		json_object_foreach(modules, mod_name, mod_data) {
+			json_t *nid, *kernel, *functions, *variables, *target_nid;
+			int has_variables = 1;
+
+			j++;
+
+			if (!json_is_object(mod_data)) {
+				COutput::Printf(LEVEL_ERROR, "error: module %s is not an object\n", mod_name);
+				json_decref(libs);
+				return NULL;
+			}
+
+			nid = json_object_get(mod_data, "nid");
+			if (!json_is_integer(nid)) {
+				COutput::Printf(LEVEL_ERROR, "error: module %s: nid is not an integer\n", mod_name);
+				json_decref(libs);
+				return NULL;
+			}
+
+			kernel = json_object_get(mod_data, "kernel");
+			if (!json_is_boolean(kernel)) {
+				COutput::Printf(LEVEL_ERROR, "error: module %s: kernel is not a boolean\n", mod_name);
+				json_decref(libs);
+				return NULL;
+			}
+
+			functions = json_object_get(mod_data, "functions");
+			if (!json_is_object(functions)) {
+				COutput::Printf(LEVEL_ERROR, "error: module %s: functions is not an array\n", mod_name);
+				json_decref(libs);
+				return NULL;
+			}
+
+			variables = json_object_get(mod_data, "variables");
+			if (variables == NULL) {
+				has_variables = 0;
+			}
+
+			if (has_variables && !json_is_object(variables)) {
+				COutput::Printf(LEVEL_ERROR, "error: module %s: variables is not an array\n", mod_name);
+				json_decref(libs);
+				return NULL;
+			}
+
+			LibraryEntry *pLib;
+
+			COutput::Printf(LEVEL_DEBUG, "Library %s\n", mod_name);
+			SAFE_ALLOC(pLib, LibraryEntry);
+			if(pLib != NULL)
+			{
+				memset(pLib, 0, sizeof(LibraryEntry));
+				strcpy(pLib->lib_name, mod_name);
+				strcpy(pLib->prx_name, mod_name);
+				strcpy(pLib->prx, mod_name);
+				if(strcmp(pLib->lib_name, MASTER_NID_MAPPER) == 0)
+				{
+					blMasterNids = true;
+					COutput::Printf(LEVEL_DEBUG, "Found master NID table\n");
+				}
+				
+				int fCount = json_object_size(functions);
+				int vCount = json_object_size(variables);
+
+				pLib->vcount = vCount;
+				pLib->fcount = fCount;
+				if((fCount+vCount) > 0)
+				{
+					SAFE_ALLOC(pLib->pNids, LibraryNid[vCount+fCount]);
+					if(pLib->pNids != NULL)
+					{
+						int iLoop = 0;
+						const char *pName;
+
+						memset(pLib->pNids, 0, sizeof(LibraryNid) * (vCount+fCount));
+						pLib->entry_count = vCount + fCount;
+
+						k = -1;
+						json_object_foreach(functions, target_name, target_nid) {
+							k++;
+
+							if (!json_is_integer(target_nid)) {
+								COutput::Printf(LEVEL_ERROR, "error: function %s: nid is not an integer\n", target_name);
+								json_decref(libs);
+								return NULL;
+							}
+
+							pLib->pNids[iLoop].pParentLib = pLib;
+							pLib->pNids[iLoop].nid = json_integer_value(target_nid);
+							strcpy(pLib->pNids[iLoop].name, target_name);
+							COutput::Printf(LEVEL_DEBUG, "Read func:%s nid:0x%08X\n", pLib->pNids[iLoop].name, pLib->pNids[iLoop].nid);
+							iLoop++;
+						}
+
+						if (has_variables) {
+							k = -1;
+							json_object_foreach(variables, target_name, target_nid) {
+								k++;
+
+								if (!json_is_integer(target_nid)) {
+									COutput::Printf(LEVEL_ERROR, "error: variable %s: nid is not an integer\n", target_name);
+									json_decref(libs);
+									return NULL;
+								}
+
+								pLib->pNids[iLoop].pParentLib = pLib;
+								pLib->pNids[iLoop].nid = json_integer_value(target_nid);
+								strcpy(pLib->pNids[iLoop].name, target_name);
+								iLoop++;
+							}
+						}
+					}
+				}
+
+				if(m_pLibHead == NULL)
+				{
+					m_pLibHead = pLib;
+				}
+				else
+				{
+					pLib->pNext = m_pLibHead;
+					m_pLibHead = pLib;
+				}
+
+				if(blMasterNids)
+				{
+					m_pMasterNids = pLib;
+				}
+			}
+		}
+	}
 }
 
 /* Find the name based on our list of names */
