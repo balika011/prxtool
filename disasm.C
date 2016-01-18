@@ -9,7 +9,7 @@
 #include <string.h>
 #include "disasm.h"
 
-#include <capstone.h>
+#include <capstone/capstone.h>
 
 static int g_hexints = 0;
 static int g_mregs = 0;

@@ -44,21 +44,20 @@ class CProcessPrx : public CProcessElf
 	int  LoadRelocsTypeB(struct ElfReloc *pRelocs);
 	bool LoadRelocs();
 	bool BuildMaps();
-	void BuildSymbols(SymbolMap &syms, u32 dwBase);
-	void FreeSymbols(SymbolMap &syms);
-	void FreeImms(ImmMap &imms);
-	void FixupRelocs(u32 dwBase, ImmMap &imms);
+	void BuildSymbols();
+	void FreeSymbols();
+	void FreeImms();
+	void FixupRelocs();
 	bool ReadString(u32 dwAddr, std::string &str, bool unicode, u32 *dwRet);
 	void DumpStrings(FILE *fp, u32 dwAddr, u32 iSize, unsigned char *pData);
 	void PrintRow(FILE *fp, const u32* row, s32 row_size, u32 addr);
 	void DumpData(FILE *fp, u32 dwAddr, u32 iSize, unsigned char *pData);
-	void Disasm(FILE *fp, u32 dwAddr, u32 iSize, unsigned char *pData, ImmMap &imms, u32 dwBase);
-	void DisasmXML(FILE *fp, u32 dwAddr, u32 iSize, unsigned char *pData, ImmMap &imms, u32 dwBase);
+	void Disasm(FILE *fp, u32 dwAddr, u32 iSize, unsigned char *pData, ImmMap &imms);
+	void DisasmXML(FILE *fp, u32 dwAddr, u32 iSize, unsigned char *pData, ImmMap &imms);
 	void CalcElfSize(size_t &iTotal, size_t &iSectCount, size_t &iStrSize);
 	bool OutputElfHeader(FILE *fp, size_t iSectCount);
 	bool OutputSections(FILE *fp, size_t iElfHeadSize, size_t iSectCount, size_t iStrSize);
-	int  FindFuncExtent(u32 dwStart, u8 *pTouchMap);
-	void MapFuncExtents(SymbolMap &syms);
+
 public:
 	CProcessPrx(u32 dwBase);
 	virtual ~CProcessPrx();

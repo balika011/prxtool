@@ -414,12 +414,23 @@ void output_xmldb(const char *file, FILE *out_fp, CNidMgr *nids)
 void serialize_file(const char *file, CSerializePrx *pSer, CNidMgr *pNids)
 {
 	CProcessPrx prx(g_dwBase);
+	bool blRet;
 
 	assert(pSer != NULL);
 
 	prx.SetNidMgr(pNids);
 	COutput::Printf(LEVEL_INFO, "Loading %s\n", file);
-	if(prx.LoadFromFile(file) == false)
+
+	if(g_loadbin)
+	{
+		blRet = prx.LoadFromBinFile(file, g_database);
+	}
+	else
+	{
+		blRet = prx.LoadFromFile(file);
+	}
+
+	if(blRet == false)
 	{
 		COutput::Puts(LEVEL_ERROR, "Couldn't load prx file structures\n");
 	}
