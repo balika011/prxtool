@@ -1690,6 +1690,7 @@ void CProcessPrx::Disasm(FILE *fp, u32 dwAddr, u32 iSize, unsigned char *pData, 
 	u32 inst;
 	SymbolEntry *lastFunc = NULL;
 	unsigned int lastFuncAddr = 0;
+	int is_import = 0;
 
 	while(addr < iSize) {
 		SymbolEntry *s;
@@ -1747,6 +1748,7 @@ void CProcessPrx::Disasm(FILE *fp, u32 dwAddr, u32 iSize, unsigned char *pData, 
 									  unsigned int i;
 									  for(i = 0; i < s->imported.size(); i++)
 									  {
+										  is_import = 1;
 										  if((m_blXmlDump) && (strlen(s->imported[i]->file) > 0))
 										  {
 											  fprintf(fp, "; Imported from <a href=\"%s.html#%s_%s\">%s</a>\n", 
@@ -1882,8 +1884,15 @@ void CProcessPrx::Disasm(FILE *fp, u32 dwAddr, u32 iSize, unsigned char *pData, 
 		{
 			fprintf(fp, "<a name=\"0x%08X\"></a>", dwAddr);
 		}
+
+		if (is_import > 0 && is_import < 5) {
+			is_import++;
+		} else {
+			is_import = 0;
+		}
+
 		u32 old_dwAddr = dwAddr;
-		fprintf(fp, "\t%-40s\n", disasmInstruction(inst, &dwAddr, NULL, NULL, (addr >= m_modInfo.addr - m_dwBase) ? 1 : 0));
+		fprintf(fp, "\t%-40s\n", disasmInstruction(inst, &dwAddr, NULL, NULL, is_import > 0));
 		u32 diff = (dwAddr - old_dwAddr);
 		addr += diff;
 		if((lastFunc != NULL) && (dwAddr >= lastFuncAddr))
@@ -2013,7 +2022,7 @@ bool CProcessPrx::BuildMaps()
 				char name[128];
 
 				/* Hopefully most functions will start with push */
-				if((inst & 0xFFFF) == 0xE92D)
+				if((inst & 0xFFFF) == 0xE92D) // TODO: make this better
 				{
 					snprintf(name, sizeof(name), "sub_%08X", imm->target);
 					s->type = SYMBOL_FUNC;
