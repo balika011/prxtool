@@ -164,7 +164,7 @@ int disasmIsBranch(unsigned int opcode, unsigned int *PC, unsigned int *dwTarget
 				{
 					if(insn->mnemonic[0] == 'b')
 					{
-						if (strcmp(insn->mnemonic, "bfi") != 0 && strcmp(insn->mnemonic, "bkpt") != 0 && strcmp(insn->mnemonic, "bics") != 0) {
+						if (strcmp(insn->mnemonic, "bfi") != 0 && strcmp(insn->mnemonic, "bkpt") != 0 && strncmp(insn->mnemonic, "bic", 3) != 0) {
 							type = INSTR_TYPE_LOCAL;
 							
 							if (strcmp(insn->mnemonic, "bl") == 0 || strcmp(insn->mnemonic, "blx") == 0) {
@@ -553,12 +553,11 @@ const char *disasmInstruction(unsigned int opcode, unsigned int *PC, unsigned in
 	}
 
 	cs_mode old_disasm_mode = disasm_mode;
-/*
+
 	if (nothumb) {
-		
 		disasm_mode = (cs_mode)(CS_MODE_ARM);
 	}
-*/
+
 	static csh handle;
 	cs_err err = cs_open(CS_ARCH_ARM, disasm_mode, &handle);
 	if (err) {
