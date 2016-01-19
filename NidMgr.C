@@ -7,6 +7,7 @@
  ***************************************************************/
 
 #include <stdlib.h>
+#include <jansson.h>
 #include <tinyxml/tinyxml.h>
 #include "output.h"
 #include "NidMgr.h"
@@ -380,23 +381,6 @@ bool CNidMgr::AddXmlFile(const char *szFilename)
 	return blRet;
 }
 
-#include <jansson.h>
-
-int vita_imports_loads(FILE *text, int verbose);
-
-bool CNidMgr::AddJsonFile(const char *szFilename)
-{
-	FILE *fp = fopen(szFilename, "r");
-	if (fp == NULL) {
-		COutput::Printf(LEVEL_ERROR, "Error: could not open %s\n", szFilename);
-		return NULL;
-	}
-
-	vita_imports_loads(fp, 1);
-
-	fclose(fp);
-}
-
 int CNidMgr::vita_imports_loads(FILE *text, int verbose)
 {
 	bool blMasterNids = false;
@@ -408,13 +392,13 @@ int CNidMgr::vita_imports_loads(FILE *text, int verbose)
 	libs = json_loadf(text, 0, &error);
 	if (libs == NULL) {
 		COutput::Printf(LEVEL_ERROR, "error: on line %d: %s\n", error.line, error.text);
-		return NULL;
+		return 0;
 	}
 
 	if (!json_is_object(libs)) {
 		COutput::Printf(LEVEL_ERROR, "error: modules is not an object\n");
 		json_decref(libs);
-		return NULL;
+		return 0;
 	}
 
 	int i, j, k;
@@ -428,21 +412,21 @@ int CNidMgr::vita_imports_loads(FILE *text, int verbose)
 		if (!json_is_object(lib_data)) {
 			COutput::Printf(LEVEL_ERROR, "error: library %s is not an object\n", lib_name);
 			json_decref(libs);
-			return NULL;
+			return 0;
 		}
 
 		nid = json_object_get(lib_data, "nid");
 		if (!json_is_integer(nid)) {
 			COutput::Printf(LEVEL_ERROR, "error: library %s: nid is not an integer\n", lib_name);
 			json_decref(libs);
-			return NULL;
+			return 0;
 		}
 
 		modules = json_object_get(lib_data, "modules");
 		if (!json_is_object(modules)) {
 			COutput::Printf(LEVEL_ERROR, "error: library %s: module is not an object\n", lib_name);
 			json_decref(libs);
-			return NULL;
+			return 0;
 		}
 
 		j = -1;
@@ -455,39 +439,39 @@ int CNidMgr::vita_imports_loads(FILE *text, int verbose)
 			if (!json_is_object(mod_data)) {
 				COutput::Printf(LEVEL_ERROR, "error: module %s is not an object\n", mod_name);
 				json_decref(libs);
-				return NULL;
+				return 0;
 			}
 
 			nid = json_object_get(mod_data, "nid");
 			if (!json_is_integer(nid)) {
 				COutput::Printf(LEVEL_ERROR, "error: module %s: nid is not an integer\n", mod_name);
 				json_decref(libs);
-				return NULL;
+				return 0;
 			}
 
 			kernel = json_object_get(mod_data, "kernel");
 			if (!json_is_boolean(kernel)) {
 				COutput::Printf(LEVEL_ERROR, "error: module %s: kernel is not a boolean\n", mod_name);
 				json_decref(libs);
-				return NULL;
+				return 0;
 			}
 
 			functions = json_object_get(mod_data, "functions");
 			if (!json_is_object(functions)) {
 				COutput::Printf(LEVEL_ERROR, "error: module %s: functions is not an array\n", mod_name);
 				json_decref(libs);
-				return NULL;
+				return 0;
 			}
 
 			variables = json_object_get(mod_data, "variables");
-			if (variables == NULL) {
+			if (variables == 0) {
 				has_variables = 0;
 			}
 
 			if (has_variables && !json_is_object(variables)) {
 				COutput::Printf(LEVEL_ERROR, "error: module %s: variables is not an array\n", mod_name);
 				json_decref(libs);
-				return NULL;
+				return 0;
 			}
 
 			LibraryEntry *pLib;
@@ -529,7 +513,7 @@ int CNidMgr::vita_imports_loads(FILE *text, int verbose)
 							if (!json_is_integer(target_nid)) {
 								COutput::Printf(LEVEL_ERROR, "error: function %s: nid is not an integer\n", target_name);
 								json_decref(libs);
-								return NULL;
+								return 0;
 							}
 
 							pLib->pNids[iLoop].pParentLib = pLib;
@@ -547,7 +531,7 @@ int CNidMgr::vita_imports_loads(FILE *text, int verbose)
 								if (!json_is_integer(target_nid)) {
 									COutput::Printf(LEVEL_ERROR, "error: variable %s: nid is not an integer\n", target_name);
 									json_decref(libs);
-									return NULL;
+									return 0;
 								}
 
 								pLib->pNids[iLoop].pParentLib = pLib;
@@ -576,6 +560,21 @@ int CNidMgr::vita_imports_loads(FILE *text, int verbose)
 			}
 		}
 	}
+
+	return 1;
+}
+
+bool CNidMgr::AddJsonFile(const char *szFilename)
+{
+	FILE *fp = fopen(szFilename, "r");
+	if (fp == NULL) {
+		COutput::Printf(LEVEL_ERROR, "Error: could not open %s\n", szFilename);
+		return NULL;
+	}
+
+	vita_imports_loads(fp, 1);
+
+	fclose(fp);
 }
 
 /* Find the name based on our list of names */
